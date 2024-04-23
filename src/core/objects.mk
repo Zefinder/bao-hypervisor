@@ -13,3 +13,5 @@ core-objs-y+=console.o
 core-objs-y+=ipc.o
 core-objs-y+=objpool.o
 core-objs-y+=hypercall.o
+core-objs-y+=fp_sched.o
+core-objs-y+=ipi.o

@@ -392,6 +392,7 @@
 #define ESR_ISS_DA_DSFC_TRNSLT     (0x4)
 #define ESR_ISS_DA_DSFC_ACCESS     (0x8)
 #define ESR_ISS_DA_DSFC_PERMIS     (0xC)
+#define ESR_ISS_DA_DSFC_DOMAIN     (0x3C)
 
 #define ESR_ISS_SYSREG_ADDR        ((0xfff << 10) | (0xf << 1))
 #define ESR_ISS_SYSREG_ADDR_32     (0xFFC1E)

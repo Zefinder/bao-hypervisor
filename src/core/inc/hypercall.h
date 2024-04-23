@@ -9,7 +9,8 @@
 #include <bao.h>
 #include <arch/hypercall.h>
 
-enum { HC_INVAL = 0, HC_IPC = 1 };
+// TODO Get CPU id is for testing, remove when it works
+enum { HC_INVAL = 0, HC_IPC = 1, HC_REQUEST_MEM_ACCESS = 2, HC_REVOKE_MEM_ACCESS = 3, HC_GET_CPU_ID = 4 };
 
 enum { HC_E_SUCCESS = 0, HC_E_FAILURE = 1, HC_E_INVAL_ID = 2, HC_E_INVAL_ARGS = 3 };
 

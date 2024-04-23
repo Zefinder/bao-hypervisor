@@ -4,51 +4,53 @@
 #include <cpu.h>
 #include <spinlock.h>
 #include <interrupts.h>
+#include <ipi.h>
 
-#define TOKEN_NULL_OWNER    -1
-#define TOKEN_NULL_PRIORITY -1
-
-static spinlock_t memory_lock                     = SPINLOCK_INITVAL;
-static volatile int64_t memory_requests[NUM_CPUS] = { [0 ... NUM_CPUS-1] = TOKEN_NULL_PRIORITY };
-static volatile int64_t token_owner               = TOKEN_NULL_OWNER;
-static volatile int64_t token_priority            = TOKEN_NULL_PRIORITY;
-
-enum { INJECT_SGI = 1 };
-
-void inter_vm_irq_handler(uint32_t event, uint64_t data) {
-    if(event == INJECT_SGI) {
-        interrupts_vm_inject(cpu.vcpu->vm, data);
-    }
-}
-CPU_MSG_HANDLER(inter_vm_irq_handler, INTER_VM_IRQ);
-
-#define CPU_MSG(handler,event,data) (&(cpu_msg_t){handler, event, data})
+static spinlock_t memory_lock = SPINLOCK_INITVAL;
+static volatile int64_t memory_requests[NUM_CPUS] = {[0 ... NUM_CPUS - 1] = TOKEN_NULL_PRIORITY};
+static volatile struct memory_token memory_token = {TOKEN_NULL_OWNER, TOKEN_NULL_PRIORITY};
 
 uint64_t fp_request_access(uint64_t dec_prio)
 {
-    // using increasing priorities for the rest of the code
+    // The calling CPU id
+    int cpu_id = cpu()->id;
+
+    // Using increasing priorities for the rest of the code
     int64_t priority = (int64_t)(NUM_CPUS - dec_prio);
 
     spin_lock(&memory_lock);
 
-    memory_requests[cpu.id] = priority;
+    INFO("%d %d", memory_token.priority, priority)
 
-    if (priority > token_priority) {
-        if (token_owner != TOKEN_NULL_OWNER &&
-            (uint64_t)token_owner != cpu.id) {
-//            INFO("Send interrupt to reclaim the token from %d and give to %d",
-//                 token_owner,
-//                 cpu.id);
-            cpu_send_msg((uint64_t)token_owner, 
-                         CPU_MSG(INTER_VM_IRQ,
-                                 INJECT_SGI,
-                                 FP_IPI_PAUSE));
+    // Setting request priority in the array of requests
+    memory_requests[cpu_id] = priority;
+
+    // If it has greater priority, then...
+    if (priority > memory_token.priority)
+    {
+        // If someone had access to the memory, we send an IPI to pause
+        if (memory_token.owner != TOKEN_NULL_OWNER && (uint64_t)memory_token.owner != cpu_id)
+        {
+            // INFO("CPU %d takes the memory token from CPU %d!", cpu_id, memory_token.owner);
+            ipi_data_t ipi_data = {{0, IPI_IRQ_PAUSE}};
+            send_ipi((cpuid_t)memory_token.owner, FPSCHED_EVENT, ipi_data);
         }
-        token_owner    = (int64_t)cpu.id;
-        token_priority = priority;
+
+        // Update the access token data
+        memory_token.owner = (int64_t)cpu_id;
+        memory_token.priority = priority;
     }
 
-    int got_token = (token_owner == (int64_t)cpu.id);
+    // Returning FP_REQ_RESP_ACK if memory access granted
+    int got_token = (memory_token.owner == (int64_t)cpu_id);
+    if (got_token)
+    {
+        // INFO("Given CPU %d memory token!", cpu_id);
+    }
+    else
+    {
+        // INFO("Refused access to memory token for CPU %d!", cpu_id);
+    }
 
     spin_unlock(&memory_lock);
 
@@ -57,28 +59,39 @@ uint64_t fp_request_access(uint64_t dec_prio)
 
 void fp_revoke_access()
 {
+    // The calling CPU id
+    int cpu_id = cpu()->id;
+
     spin_lock(&memory_lock);
+    // INFO("Revoke access for CPU %d", cpu_id);
 
-    memory_requests[cpu.id] = TOKEN_NULL_PRIORITY;
+    // Remove request (even if not using it, e.g. timed out)
+    memory_requests[cpu_id] = TOKEN_NULL_PRIORITY;
 
-    if(token_owner == (int64_t)cpu.id)
+    // If owner of the access token then...
+    if (memory_token.owner == (int64_t)cpu_id)
     {
-        token_owner    = TOKEN_NULL_OWNER;
-        token_priority = TOKEN_NULL_PRIORITY;
+        // Reset token
+        memory_token.owner = TOKEN_NULL_OWNER;
+        memory_token.priority = TOKEN_NULL_PRIORITY;
 
-        for (uint64_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
-            if (memory_requests[cpu] > token_priority) {
-                token_priority = memory_requests[cpu];
-                token_owner    = (int64_t)cpu;
+        // Search for pending requests
+        for (uint64_t cpu = 0; cpu < NUM_CPUS; ++cpu)
+        {
+            if (memory_requests[cpu] > memory_token.priority)
+            {
+                memory_token.priority = memory_requests[cpu];
+                memory_token.owner = (int64_t)cpu;
             }
         }
 
-        if (token_owner != TOKEN_NULL_OWNER) {
-//            INFO("Send interrupt to pass the token from %d to %d", cpu.id, token_owner);
-            cpu_send_msg((uint64_t)token_owner,
-                         CPU_MSG(INTER_VM_IRQ,
-                                 INJECT_SGI,
-                                 FP_IPI_RESUME));
+        // If found, send an IPI to resume the task
+        if (memory_token.owner != TOKEN_NULL_OWNER)
+        {
+            // INFO("Giving access to person waiting: CPU %d", memory_token.owner);
+            ipi_data_t ipi_data = {{0, IPI_IRQ_RESUME}};
+            send_ipi((cpuid_t)memory_token.owner, FPSCHED_EVENT, ipi_data);
+            // INFO("Access given to CPU %d", memory_token.owner);
         }
     }
 
