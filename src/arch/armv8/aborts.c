@@ -14,6 +14,73 @@
 
 typedef void (*abort_handler_t)(unsigned long, unsigned long, unsigned long, unsigned long);
 
+void aborts_instruction_lower(unsigned long iss, unsigned long far, unsigned long il, unsigned long ec)
+{
+    INFO("Instruction Abort Exception");
+    unsigned int SET = bit64_extract(iss, ESR_ISS_DA_SET_OFF, ESR_ISS_DA_SET_LEN);
+    unsigned char FnV = bit64_extract(iss, ESR_ISS_DA_FnV_OFF, ESR_ISS_DA_FnV_LEN);
+    unsigned char EA = bit64_extract(iss, ESR_ISS_DA_EA_OFF, ESR_ISS_DA_EA_LEN);
+    unsigned char S1PTW = bit64_extract(iss, ESR_ISS_DA_S1PTW_OFF, ESR_ISS_DA_S1PTW_LEN);
+    unsigned long IFSC = bit64_extract(iss, ESR_ISS_DA_DSFC_OFF, ESR_ISS_DA_DSFC_LEN) & ESR_ISS_DA_DSFC_CODE;
+    // INFO("SET: %d", SET);
+    // INFO("FnV: %d", FnV);
+    // INFO("EA: %d", EA);
+    // INFO("S1PTW: %d", S1PTW);
+    // INFO("far: 0x%lx\nil: 0x%lx", far, il);
+    // INFO("IFSC: %lx", IFSC);
+
+    if (IFSC == 0b010000) {
+        if (!SET) {
+            ERROR("Recoverable state (UER)");
+        } else if (SET == 2) {
+            ERROR("Uncontainable (UC)");
+        } else if (SET == 3) {
+            ERROR("Restartable state (UEO)");
+        } else {
+            ERROR("Nothing");
+        }
+    }
+
+    if (FnV) {
+        ERROR("FAR invalid, unknown value");
+    }
+
+    if (EA) {
+        ERROR("external abort detected");
+    }
+
+    if (S1PTW) {
+        INFO("fault on the stage 2 translation of an access for a stage 1 translation table walk");
+    }
+
+    if (IFSC != ESR_ISS_DA_DSFC_TRNSLT && IFSC != ESR_ISS_DA_DSFC_PERMIS) {
+        ERROR("data abort is not translation fault - cant deal with it");
+    }
+
+    vaddr_t addr = far;
+    emul_handler_t handler = vm_emul_get_mem(cpu()->vcpu->vm, addr);
+    if (handler != NULL) {
+        struct emul_access emul;
+        emul.addr = addr;
+        emul.width = (1 << bit64_extract(iss, ESR_ISS_DA_SAS_OFF, ESR_ISS_DA_SAS_LEN));
+        emul.write = iss & ESR_ISS_DA_WnR_BIT ? true : false;
+        emul.reg = bit64_extract(iss, ESR_ISS_DA_SRT_OFF, ESR_ISS_DA_SRT_LEN);
+        emul.reg_width = 4 + (4 * bit64_extract(iss, ESR_ISS_DA_SF_OFF, ESR_ISS_DA_SF_LEN));
+        emul.sign_ext = bit64_extract(iss, ESR_ISS_DA_SSE_OFF, ESR_ISS_DA_SSE_LEN);
+
+        // TODO: check if the access is aligned. If not, inject an exception in the vm
+
+        if (handler(&emul)) {
+            unsigned long pc_step = 2 + (2 * il);
+            vcpu_writepc(cpu()->vcpu, vcpu_readpc(cpu()->vcpu) + pc_step);
+        } else {
+            ERROR("data abort emulation failed (0x%x)", far);
+        }
+    } else {
+        ERROR("no emulation handler for abort(0x%x at 0x%x)", far, vcpu_readpc(cpu()->vcpu));
+    }
+}
+
 void aborts_data_lower(unsigned long iss, unsigned long far, unsigned long il, unsigned long ec)
 {
     if (!(iss & ESR_ISS_DA_ISV_BIT) || (iss & ESR_ISS_DA_FnV_BIT)) {
@@ -150,7 +217,10 @@ void sysreg_handler(unsigned long iss, unsigned long far, unsigned long il, unsi
     }
 }
 
+
+
 abort_handler_t abort_handlers[64] = {
+    [ESR_EC_IALEL] = aborts_instruction_lower,
     [ESR_EC_DALEL] = aborts_data_lower,
     [ESR_EC_SMC32] = smc_handler,
     [ESR_EC_SMC64] = smc_handler,
