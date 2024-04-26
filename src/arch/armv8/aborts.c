@@ -14,6 +14,7 @@
 
 typedef void (*abort_handler_t)(unsigned long, unsigned long, unsigned long, unsigned long);
 
+// TODO Make it look better!
 void aborts_instruction_lower(unsigned long iss, unsigned long far, unsigned long il, unsigned long ec)
 {
     INFO("Instruction Abort Exception");

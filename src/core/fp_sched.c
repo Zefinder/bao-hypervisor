@@ -20,8 +20,6 @@ uint64_t fp_request_access(uint64_t dec_prio)
 
     spin_lock(&memory_lock);
 
-    INFO("%d %d", memory_token.priority, priority)
-
     // Setting request priority in the array of requests
     memory_requests[cpu_id] = priority;
 
@@ -43,15 +41,6 @@ uint64_t fp_request_access(uint64_t dec_prio)
 
     // Returning FP_REQ_RESP_ACK if memory access granted
     int got_token = (memory_token.owner == (int64_t)cpu_id);
-    if (got_token)
-    {
-        // INFO("Given CPU %d memory token!", cpu_id);
-    }
-    else
-    {
-        // INFO("Refused access to memory token for CPU %d!", cpu_id);
-    }
-
     spin_unlock(&memory_lock);
 
     return got_token ? FP_REQ_RESP_ACK : FP_REQ_RESP_NACK;
