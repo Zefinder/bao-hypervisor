@@ -179,6 +179,9 @@ endif
 ifeq ($(arch_mem_prot),mpu)
 build_macros+=-DMEM_PROT_MPU
 endif
+ifeq ($(MEMORY_REQUEST_WAIT),y)
+build_macros+=-DMEMORY_REQUEST_WAIT
+endif
 
 override CPPFLAGS+=$(addprefix -I, $(inc_dirs)) $(arch-cppflags) \
 	$(platform-cppflags) $(build_macros)
