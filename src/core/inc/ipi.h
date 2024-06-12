@@ -12,7 +12,10 @@ enum ipi_event { FPSCHED_EVENT = 1 };
 
 #define IPI_BROADCAST (cpuid_t)-1
 
-/* IPI data */
+/* 
+ * This structure contains the data to sent to the IPI as well as the interrupt
+ * number to use.
+ */
 typedef union ipi_data {
     struct {
         uint32_t data;
@@ -22,6 +25,10 @@ typedef union ipi_data {
     uint64_t raw;
 } ipi_data_t;
 
-void send_ipi(cpuid_t trgtcpu, enum ipi_event, ipi_data_t ipi_data);
+/*
+ * This is a function used to send an IPI to the targetted CPU [trgtcpu] with an
+ * event and a data structure
+ */
+void send_ipi(cpuid_t trgtcpu, enum ipi_event event, ipi_data_t ipi_data);
 
 #endif

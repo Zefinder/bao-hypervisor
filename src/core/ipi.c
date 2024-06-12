@@ -10,6 +10,7 @@ void ipi_send_handler(uint32_t event, uint64_t data)
     switch (event)
     {
     case FPSCHED_EVENT:
+        INFO("Sending IPI interrupt %d to CPU %d", ipi_data.interrupt_number, cpu()->id)
         vcpu_inject_hw_irq(cpu()->vcpu, ipi_data.interrupt_number);
         break;
     }
