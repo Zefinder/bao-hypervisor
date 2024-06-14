@@ -33,21 +33,21 @@ uint64_t fp_request_access(uint64_t dec_prio)
     uint64_t next_fetch_time = next_fetch_time_array[cpu_id];
     // if (cpu_id != 0)
     // {
-        // INFO("------ CPU %d REQUEST ------", cpu_id);
-        // INFO("next_fetch_time=%ld", next_fetch_time_array[cpu_id]);
-        // INFO("current_time=%ld", current_time);
-        // if (current_time < next_fetch_time)
-        // {
-        //     INFO("Must wait %ld ticks (%ld ms)", next_fetch_time - current_time, ((next_fetch_time - current_time) * 1000) / (uint64_t) generic_timer_get_freq());
-        // }
+        INFO("------ CPU %d REQUEST ------", cpu_id);
+        INFO("next_fetch_time=%ld", next_fetch_time_array[cpu_id]);
+        INFO("current_time=%ld", current_time);
+        if (current_time < next_fetch_time)
+        {
+            INFO("Must wait %ld ticks (%ld ms)", next_fetch_time - current_time, ((next_fetch_time - current_time) * 1000) / (uint64_t) generic_timer_get_freq());
+        }
     // }
     if (current_time < next_fetch_time)
     {
         union memory_request_answer answer = {{.ack = FP_REQ_RESP_NACK, .ttw = next_fetch_time - current_time}};
         // if (cpu_id != 0)
         // {
-            // INFO("answer=%ld (ack=%d,ttw=%ld)", answer.raw, answer.ack, answer.ttw);
-            // INFO("------ CPU %d END ------\n", cpu_id);
+            INFO("answer=%ld (ack=%d,ttw=%ld)", answer.raw, answer.ack, answer.ttw);
+            INFO("------ CPU %d END ------\n", cpu_id);
         // }
         spin_unlock(&memory_lock);
         return answer.raw;
@@ -70,14 +70,14 @@ uint64_t fp_request_access(uint64_t dec_prio)
             // Freeze the "fetch timer" for the one that was fetching
             // That means add the current time to the current memory time (current time - start time)
 
-            // INFO("");
-            // INFO("\t------ CPU %d PAUSE ------", memory_token.owner);
-            // INFO("\tlast_start_time=%ld", next_fetch_time_array[memory_token.owner]);
-            // INFO("\tcurrent_time=%ld", current_time);
-            // INFO("\tprevious_fetch_time=%ld (%ld ms)", current_memory_fetch_time[memory_token.owner], (current_memory_fetch_time[memory_token.owner] * 1000) / (uint64_t) generic_timer_get_freq());
-            // INFO("\tadded_fetch_time=%ld (%ld ms)", current_time - next_fetch_time_array[memory_token.owner], ((current_time - next_fetch_time_array[memory_token.owner]) * 1000) / (uint64_t) generic_timer_get_freq());
-            // INFO("\t------ CPU %d END ------", memory_token.owner);
-            // INFO("");
+            INFO("");
+            INFO("\t------ CPU %d PAUSE ------", memory_token.owner);
+            INFO("\tlast_start_time=%ld", next_fetch_time_array[memory_token.owner]);
+            INFO("\tcurrent_time=%ld", current_time);
+            INFO("\tprevious_fetch_time=%ld (%ld ms)", current_memory_fetch_time[memory_token.owner], (current_memory_fetch_time[memory_token.owner] * 1000) / (uint64_t) generic_timer_get_freq());
+            INFO("\tadded_fetch_time=%ld (%ld ms)", current_time - next_fetch_time_array[memory_token.owner], ((current_time - next_fetch_time_array[memory_token.owner]) * 1000) / (uint64_t) generic_timer_get_freq());
+            INFO("\t------ CPU %d END ------", memory_token.owner);
+            INFO("");
             current_memory_fetch_time[memory_token.owner] += current_time - next_fetch_time_array[memory_token.owner];
         #endif
         }
@@ -96,15 +96,15 @@ uint64_t fp_request_access(uint64_t dec_prio)
     int got_token = (memory_token.owner == (int64_t)cpu_id);
     // if (cpu_id != 0)
     // {
-        // if (got_token)
-        // {
-        //     INFO("Memory access granted");
-        // }
-        // else
-        // {
-        //     INFO("Memory access refused");
-        // }
-        // INFO("------ CPU %d END ------\n", cpu_id);
+        if (got_token)
+        {
+            INFO("Memory access granted");
+        }
+        else
+        {
+            INFO("Memory access refused");
+        }
+        INFO("------ CPU %d END ------\n", cpu_id);
     // }
     spin_unlock(&memory_lock);
 
@@ -130,13 +130,13 @@ void fp_revoke_access()
         uint64_t time_taken = current_memory_fetch_time[cpu_id] + (current_time - next_fetch_time_array[cpu_id]);
         // if (cpu_id != 0)
         // {
-            // INFO("------ CPU %d REVOKE ------", cpu_id);
-            // INFO("last_start_time=%ld", next_fetch_time_array[cpu_id]);
-            // INFO("current_time=%ld", current_time);
-            // INFO("already_fetched_time=%ld", current_memory_fetch_time[cpu_id]);
-            // INFO("time_taken=%ld (%ld ms)", time_taken, (time_taken * 1000) / (uint64_t) generic_timer_get_freq());
-            // INFO("current_time+3*time_taken=%ld", current_time + 3 * time_taken);
-            // INFO("------ CPU %d END ------\n", cpu_id);
+            INFO("------ CPU %d REVOKE ------", cpu_id);
+            INFO("last_start_time=%ld", next_fetch_time_array[cpu_id]);
+            INFO("current_time=%ld", current_time);
+            INFO("already_fetched_time=%ld", current_memory_fetch_time[cpu_id]);
+            INFO("time_taken=%ld (%ld ms)", time_taken, (time_taken * 1000) / (uint64_t) generic_timer_get_freq());
+            INFO("current_time+3*time_taken=%ld", current_time + 3 * time_taken);
+            INFO("------ CPU %d END ------\n", cpu_id);
         // }
         next_fetch_time_array[cpu_id] = current_time + 3 * time_taken;
 
@@ -167,10 +167,10 @@ void fp_revoke_access()
         #ifdef MEMORY_REQUEST_WAIT
             // Unfreeze the "fetch timer" for the new fetcher. That means reset the start time
             next_fetch_time_array[memory_token.owner] = current_time;
-            // INFO("------ CPU %d RESUME ------", memory_token.owner);
-            // INFO("current_time=%ld", current_time);
-            // INFO("already_fetched_time=%ld (%ld ms)", current_memory_fetch_time[memory_token.owner], (current_memory_fetch_time[memory_token.owner] * 1000) / (uint64_t) generic_timer_get_freq());
-            // INFO("------ CPU %d END ------\n", memory_token.owner);
+            INFO("------ CPU %d RESUME ------", memory_token.owner);
+            INFO("current_time=%ld", current_time);
+            INFO("already_fetched_time=%ld (%ld ms)", current_memory_fetch_time[memory_token.owner], (current_memory_fetch_time[memory_token.owner] * 1000) / (uint64_t) generic_timer_get_freq());
+            INFO("------ CPU %d END ------\n", memory_token.owner);
         #endif
         }
     }

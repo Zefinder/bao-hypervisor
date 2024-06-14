@@ -49,6 +49,9 @@ long int hypercall(unsigned long id)
             uint64_t end_time = generic_timer_read_counter();
             ret = end_time - start_time;
             break;
+        case HC_DISPLAY_STRING:
+            INFO("CPU %d said: %d", arg0);
+            break;
         default:
             WARNING("Unknown hypercall id %d", id);
     }
