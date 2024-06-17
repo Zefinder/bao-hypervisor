@@ -50,7 +50,7 @@ long int hypercall(unsigned long id)
             ret = end_time - start_time;
             break;
         case HC_DISPLAY_STRING:
-            INFO("CPU %d said: %d", arg0);
+            INFO("CPU %d said: %d", cpu()->id, arg0);
             break;
         default:
             WARNING("Unknown hypercall id %d", id);
