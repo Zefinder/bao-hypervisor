@@ -52,6 +52,12 @@ long int hypercall(unsigned long id)
         case HC_DISPLAY_STRING:
             INFO("CPU %d said: %d", cpu()->id, arg0);
             break;
+        case HC_MEASURE_IPI:
+            ipi_data_t data = {{.data = 0, .interrupt_number = IPI_IRQ_PAUSE}};
+            // Send an IPI and measure time. This time will be compared when received by the OS
+            send_ipi(cpu()->id, FPSCHED_EVENT, data);
+            ret = generic_timer_read_counter();
+            break;
         default:
             WARNING("Unknown hypercall id %d", id);
     }
