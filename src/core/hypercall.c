@@ -58,6 +58,13 @@ long int hypercall(unsigned long id)
             send_ipi(cpu()->id, FPSCHED_EVENT, data);
             ret = generic_timer_read_counter();
             break;
+        case HC_REVOKE_MEM_ACCESS_TIMER: 
+            // Call memory access but timing it
+            uint64_t start_time = generic_timer_read_counter();
+            fp_revoke_access();
+            uint64_t end_time = generic_timer_read_counter();
+            ret = end_time - start_time;
+            break;
         default:
             WARNING("Unknown hypercall id %d", id);
     }
