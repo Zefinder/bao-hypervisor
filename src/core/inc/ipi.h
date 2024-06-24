@@ -6,6 +6,7 @@
 enum ipi_event { FPSCHED_EVENT = 1 };
 
 /* IPI interruptions */
+#define IPI_IRQ_TEST    0
 #define IPI_IRQ_CPU     5
 #define IPI_IRQ_PAUSE   6
 #define IPI_IRQ_RESUME  7
