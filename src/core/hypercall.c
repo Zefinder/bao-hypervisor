@@ -18,6 +18,8 @@ long int hypercall(unsigned long id)
     unsigned long arg0 = vcpu_readreg(cpu()->vcpu, HYPCALL_ARG_REG(0));
     unsigned long arg1 = vcpu_readreg(cpu()->vcpu, HYPCALL_ARG_REG(1));
     unsigned long arg2 = vcpu_readreg(cpu()->vcpu, HYPCALL_ARG_REG(2));
+    ipi_data_t data;
+    uint64_t start_time, end_time;
 
     switch (id) {
         case HC_IPC:
@@ -36,7 +38,8 @@ long int hypercall(unsigned long id)
             break;
         case HC_NOTIFY_CPU:
             // arg0 is the cpuid
-            ipi_data_t data = {{.data = 0, .interrupt_number = IPI_IRQ_PAUSE}};
+            data.data = 0;
+            data.interrupt_number = IPI_IRQ_PAUSE;
             send_ipi(arg0, FPSCHED_EVENT, data);
             break;
         case HC_EMPTY_CALL:
@@ -44,25 +47,26 @@ long int hypercall(unsigned long id)
             break;
         case HC_REQUEST_MEM_ACCESS_TIMER: 
             // Call memory access but timing it
-            uint64_t start_time = generic_timer_read_counter();
+            start_time = generic_timer_read_counter();
             fp_request_access(arg0);
-            uint64_t end_time = generic_timer_read_counter();
+            end_time = generic_timer_read_counter();
             ret = end_time - start_time;
             break;
         case HC_DISPLAY_STRING:
             INFO("CPU %d said: %d", cpu()->id, arg0);
             break;
         case HC_MEASURE_IPI:
-            ipi_data_t data = {{.data = 0, .interrupt_number = IPI_IRQ_TEST}};
+            data.data = 0;
+            data.interrupt_number = IPI_IRQ_TEST;
             // Send an IPI and measure time. This time will be compared when received by the OS
             send_ipi(cpu()->id, FPSCHED_EVENT, data);
             ret = generic_timer_read_counter();
             break;
         case HC_REVOKE_MEM_ACCESS_TIMER: 
             // Call memory access but timing it
-            uint64_t start_time = generic_timer_read_counter();
+            start_time = generic_timer_read_counter();
             fp_revoke_access();
-            uint64_t end_time = generic_timer_read_counter();
+            end_time = generic_timer_read_counter();
             ret = end_time - start_time;
             break;
         default:
