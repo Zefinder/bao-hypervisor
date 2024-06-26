@@ -3,11 +3,6 @@
 
 #include <bao.h>
 
-/* CONFIG */
-// TODO Change because ugly
-// How many different cpus will compete for the access?
-#define NUM_CPUS 8
-
 /* Memory token */
 #define TOKEN_NULL_OWNER -1
 #define TOKEN_NULL_PRIORITY -1
