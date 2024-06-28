@@ -9,8 +9,8 @@
 
 struct memory_token
 {
-    int64_t owner;
-    int64_t priority;
+    uint64_t owner;
+    uint64_t priority;
 };
 
 /* Answer of hypervisor after a memory request */
