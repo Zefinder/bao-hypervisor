@@ -19,11 +19,10 @@ union memory_request_answer
     struct
     {
         uint64_t ack:1;     // 0 = no, 1 = yes
-        uint64_t ttw:63;    // Time to wait in case of no (0 = no waiting, just not prio)
+        uint64_t ttw:63;    // Time to spend in low prio
     };
     uint64_t raw;
 };
-
 
 /* Memory request answers */
 #define FP_REQ_RESP_ACK 1
@@ -31,9 +30,12 @@ union memory_request_answer
 
 /* Ask for arbitration access with a given priority (priority decreases with
  * higher numbers). */
-uint64_t fp_request_access(uint64_t dec_prio);
+uint64_t request_memory_access(uint64_t priority, uint64_t arg);
 
 /* Give back the access permissions. */
-void fp_revoke_access(void);
+void revoke_memory_access(void);
+
+/* Updates the priority for the memory access */
+void update_memory_access(uint64_t priority);
 
 #endif

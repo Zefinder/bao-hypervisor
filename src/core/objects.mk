@@ -1,6 +1,7 @@
 ## SPDX-License-Identifier: Apache-2.0
 ## Copyright (c) Bao Project and Contributors. All rights reserved.
 
+# Include schedulers
 core-objs-y+=init.o
 core-objs-y+=mem.o
 core-objs-y+=cache.o
@@ -13,5 +14,4 @@ core-objs-y+=console.o
 core-objs-y+=ipc.o
 core-objs-y+=objpool.o
 core-objs-y+=hypercall.o
-core-objs-y+=fp_sched.o
 core-objs-y+=ipi.o

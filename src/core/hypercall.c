@@ -7,7 +7,7 @@
 #include <cpu.h>
 #include <vm.h>
 #include <ipc.h>
-#include <fp_sched.h>
+#include "scheds/inc/sched.h"
 #include <ipi.h>
 #include <generic_timer.h>
 
@@ -27,11 +27,11 @@ long int hypercall(unsigned long id)
             break;
         case HC_REQUEST_MEM_ACCESS:
             // Call memory access
-            ret = fp_request_access(arg0);
+            ret = request_memory_access(arg0, arg1);
             break;
         case HC_REVOKE_MEM_ACCESS:
             // Call revoke memory
-            fp_revoke_access();
+            revoke_memory_access();
             break;
         case HC_GET_CPU_ID:
             ret = cpu()->id;
@@ -48,7 +48,7 @@ long int hypercall(unsigned long id)
         case HC_REQUEST_MEM_ACCESS_TIMER: 
             // Call memory access but timing it
             start_time = generic_timer_read_counter();
-            fp_request_access(arg0);
+            request_memory_access(arg0, arg1);
             end_time = generic_timer_read_counter();
             ret = end_time - start_time;
             break;
@@ -65,9 +65,13 @@ long int hypercall(unsigned long id)
         case HC_REVOKE_MEM_ACCESS_TIMER: 
             // Call memory access but timing it
             start_time = generic_timer_read_counter();
-            fp_revoke_access();
+            revoke_memory_access();
             end_time = generic_timer_read_counter();
             ret = end_time - start_time;
+            break;
+        case HC_UPDATE_MEM_ACCESS:
+            // Update memory access
+            update_memory_access(arg0);
             break;
         default:
             WARNING("Unknown hypercall id %d", id);

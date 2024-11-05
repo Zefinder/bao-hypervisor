@@ -1,4 +1,4 @@
-#include <fp_sched.h>
+#include "inc/sched.h"
 
 #include <vm.h>
 #include <cpu.h>
@@ -11,35 +11,38 @@
 static spinlock_t memory_lock = SPINLOCK_INITVAL;
 static volatile uint64_t memory_requests[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1] = TOKEN_NULL_PRIORITY};
 static volatile struct memory_token memory_token = {(uint64_t)TOKEN_NULL_OWNER, (uint64_t)TOKEN_NULL_PRIORITY};
-
-#ifdef MEMORY_REQUEST_WAIT
+static volatile uint64_t execution_time[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1] = 0};
 static volatile uint64_t next_fetch_time_array[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1] = 0};
 static volatile uint64_t current_memory_fetch_time[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1] = 0};
-#endif
 
 // Highest priority => closer number to 0 (0 being the highest)
-uint64_t fp_request_access(uint64_t priority)
+uint64_t request_memory_access(uint64_t priority, uint64_t wcet)
 {
     // The calling CPU id
     uint64_t cpu_id = cpu()->id;
 
     spin_lock(&memory_lock);
 
-#ifdef MEMORY_REQUEST_WAIT
     // If current time < next ok time then indicate how much time left to wait
     // Else it means that it's ok to check the priority
     uint64_t current_time = generic_timer_read_counter();
     uint64_t next_fetch_time = next_fetch_time_array[cpu_id];
+    uint64_t low_prio_time = 0;
     if (current_time < next_fetch_time)
     {
-        union memory_request_answer answer = {{.ack = FP_REQ_RESP_NACK, .ttw = next_fetch_time - current_time}};
-        spin_unlock(&memory_lock);
-        return answer.raw;
-    }
-#endif
+        // Set time being in low prio for the cpu
+        low_prio_time = next_fetch_time - current_time;
 
-    // Setting request priority in the array of requests
-    memory_requests[cpu_id] = priority;
+        // Setting request priority in the array of requests
+        memory_requests[cpu_id] = priority + PLAT_CPU_NUM;
+    }
+    else
+    {
+        memory_requests[cpu_id] = priority;
+    }
+
+    // Save the execution time
+    execution_time[cpu_id] = wcet;
 
     // If it has lower priority, then...
     if (priority < memory_token.priority)
@@ -52,38 +55,30 @@ uint64_t fp_request_access(uint64_t priority)
             ipi_data_t ipi_data = {{0, IPI_IRQ_PAUSE}};
             send_ipi(memory_token.owner, FPSCHED_EVENT, ipi_data);
 
-        #ifdef MEMORY_REQUEST_WAIT
             // Freeze the "fetch timer" for the one that was fetching
             // That means add the current time to the current memory time (current time - start time)
             current_time = generic_timer_read_counter();
             current_memory_fetch_time[memory_token.owner] += current_time - next_fetch_time_array[memory_token.owner];
-        } 
-        else 
-        {
-            current_time = generic_timer_read_counter();
         }
-        #else
-        }
-        #endif
 
-    #ifdef MEMORY_REQUEST_WAIT
         // Put in the next_fetch_array the start time (the value is not used when fetching)
-        next_fetch_time_array[cpu_id] = current_time;
         current_time = generic_timer_read_counter();
-    #endif
+        next_fetch_time_array[cpu_id] = current_time;
+
         // Update the access token data
         memory_token.owner = cpu_id;
         memory_token.priority = priority;
     }
 
-    // Returning FP_REQ_RESP_ACK if memory access granted
+    // Returning the answer and the time in low prio
     int got_token = (memory_token.owner == cpu_id);
     spin_unlock(&memory_lock);
 
-    return got_token ? FP_REQ_RESP_ACK : FP_REQ_RESP_NACK;
+    union memory_request_answer answer = {{.ack = got_token ? FP_REQ_RESP_ACK : FP_REQ_RESP_NACK}, .ttw = low_prio_time};
+    return answer.raw;
 }
 
-void fp_revoke_access()
+void revoke_memory_access()
 {
     // The calling CPU id
     uint64_t cpu_id = cpu()->id;
@@ -96,15 +91,14 @@ void fp_revoke_access()
     // If owner of the access token then...
     if (memory_token.owner == cpu_id)
     {
-    #ifdef MEMORY_REQUEST_WAIT
         // Add the time to the current fetching time and compute next possible fetch (3 * time needed)
         uint64_t current_time = generic_timer_read_counter();
         uint64_t time_taken = current_memory_fetch_time[cpu_id] + (current_time - next_fetch_time_array[cpu_id]);
-        next_fetch_time_array[cpu_id] = current_time + 3 * time_taken;
+        INFO("%lld", execution_time[cpu_id]);
+        next_fetch_time_array[cpu_id] = current_time + (execution_time[cpu_id] - time_taken);
 
         // Reset time taken
         current_memory_fetch_time[cpu_id] = 0;
-    #endif
 
         // Reset token
         memory_token.owner = (uint64_t)TOKEN_NULL_OWNER;
@@ -126,13 +120,19 @@ void fp_revoke_access()
             ipi_data_t ipi_data = {{0, IPI_IRQ_RESUME}};
             send_ipi(memory_token.owner, FPSCHED_EVENT, ipi_data);
 
-        #ifdef MEMORY_REQUEST_WAIT
             // Unfreeze the "fetch timer" for the new fetcher. That means reset the start time
             current_time = generic_timer_read_counter();
             next_fetch_time_array[memory_token.owner] = current_time;
-        #endif
         }
     }
 
     spin_unlock(&memory_lock);
+}
+
+void update_memory_access(uint64_t priority)
+{
+    // Just call request access with the save wcet
+    // No need to spinlock, only this cpu modifies its wcet
+    uint64_t cpu_id = cpu()->id;
+    request_memory_access(priority, execution_time[cpu_id]);
 }

@@ -95,13 +95,15 @@ $(error Cant find file for $(CONFIG) config!)
 endif
 endif
 
+# Add schedulers directory
+sched_dir:=$(core_dir)/scheds
 
 build_dir:=$(cur_dir)/build/$(PLATFORM)/$(CONFIG)
 bin_dir:=$(cur_dir)/bin/$(PLATFORM)/$(CONFIG)
 directories:=$(build_dir) $(bin_dir)
 
 src_dirs+=$(cpu_arch_dir) $(lib_dir) $(core_dir) $(core_mem_prot_dir) \
-	$(platform_dir) $(addprefix $(drivers_dir)/, $(drivers))
+	$(sched_dir) $(platform_dir) $(addprefix $(drivers_dir)/, $(drivers))
 inc_dirs:=$(addsuffix /inc, $(src_dirs))
 
 build_dirs:=$(patsubst $(src_dir)%, $(build_dir)%, $(src_dirs) $(inc_dirs))
@@ -179,9 +181,9 @@ endif
 ifeq ($(arch_mem_prot),mpu)
 build_macros+=-DMEM_PROT_MPU
 endif
-ifeq ($(MEMORY_REQUEST_WAIT),y)
-build_macros+=-DMEMORY_REQUEST_WAIT
-endif
+
+# Include scheduler builds
+include scheds.mk
 
 override CPPFLAGS+=$(addprefix -I, $(inc_dirs)) $(arch-cppflags) \
 	$(platform-cppflags) $(build_macros)
