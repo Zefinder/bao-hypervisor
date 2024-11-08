@@ -121,7 +121,7 @@ void revoke_memory_access()
 
             // Unfreeze the "fetch timer" for the new fetcher. That means reset the start time
             current_time = generic_timer_read_counter();
-            strcat[memory_token.owner] = current_time;
+            start_prefetch[memory_token.owner] = current_time;
         }
     }
 

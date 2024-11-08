@@ -52,8 +52,11 @@ long int hypercall(unsigned long id)
             end_time = generic_timer_read_counter();
             ret = end_time - start_time;
             break;
-        case HC_DISPLAY_STRING:
-            INFO("CPU %d said: %d", cpu()->id, arg0);
+        case HC_DISPLAY_RESULTS:
+            // Uses the 3 arguments for result display
+            // Of the form: [core number]:[arg0],[arg1],[arg2]
+            // No need to lock, there is already a spinlock
+            INFO("%d:%d,%d,%d", cpu()->id, arg0, arg1, arg2);
             break;
         case HC_MEASURE_IPI:
             data.data = 0;
