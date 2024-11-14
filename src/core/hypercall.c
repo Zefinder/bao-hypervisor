@@ -56,7 +56,7 @@ long int hypercall(unsigned long id)
             // Uses the 3 arguments for result display
             // Of the form: [core number]:[arg0],[arg1],[arg2]
             // No need to lock, there is already a spinlock
-            INFO("%d:%d,%d,%d", cpu()->id, arg0, arg1, arg2);
+            INFO("%d:%llu,%llu,%llu", cpu()->id, arg0, arg1, arg2);
             break;
         case HC_MEASURE_IPI:
             data.data = 0;
