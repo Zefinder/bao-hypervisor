@@ -85,8 +85,8 @@ void revoke_memory_access()
     spin_unlock(&memory_lock);
 }
 
-void update_memory_access(uint64_t priority)
+uint64_t update_memory_access(uint64_t priority)
 {
     // Just call request access with a dummy arg1
-    request_memory_access(priority, 0);
+    return request_memory_access(priority, 0);
 }

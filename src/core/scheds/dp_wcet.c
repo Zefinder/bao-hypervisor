@@ -128,10 +128,10 @@ void revoke_memory_access()
     spin_unlock(&memory_lock);
 }
 
-void update_memory_access(uint64_t priority)
+uint64_t update_memory_access(uint64_t priority)
 {
     // Just call request access with the save wcet
     // No need to spinlock, only this cpu modifies its wcet
     uint64_t cpu_id = cpu()->id;
-    request_memory_access(priority, execution_time[cpu_id]);
+    return request_memory_access(priority, execution_time[cpu_id]);
 }

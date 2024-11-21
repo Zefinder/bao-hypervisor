@@ -36,6 +36,6 @@ uint64_t request_memory_access(uint64_t priority, uint64_t arg);
 void revoke_memory_access(void);
 
 /* Updates the priority for the memory access */
-void update_memory_access(uint64_t priority);
+uint64_t update_memory_access(uint64_t priority);
 
 #endif
