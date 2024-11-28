@@ -36,7 +36,11 @@ uint64_t request_memory_access(uint64_t priority, uint64_t wcet)
 
         // Adding the number of CPU to the priorty (lower it)
         current_priority += PLAT_CPU_NUM;
+
+        // INFO("Core %d put low priority", cpu_id);
     }
+
+    // INFO("Core %d asked priority %d (WCET: %llu)", cpu_id, current_priority, wcet);
 
     // Setting request priority in the array of requests
     memory_requests[cpu_id] = current_priority;
@@ -55,14 +59,14 @@ uint64_t request_memory_access(uint64_t priority, uint64_t wcet)
             ipi_data_t ipi_data = {{0, IPI_IRQ_PAUSE}};
             send_ipi(memory_token.owner, FPSCHED_EVENT, ipi_data);
 
+            // INFO("Core %d put in pause", memory_token.owner);
+
             // Freeze the "fetch timer" for the one that was fetching
             // That means add the current time to the current memory time (current time - start time)
-            current_time = generic_timer_read_counter();
             prefetch_time[memory_token.owner] += current_time - start_prefetch[memory_token.owner];
         }
 
         // Put in the next_fetch_array the start time (the value is not used when fetching)
-        current_time = generic_timer_read_counter();
         start_prefetch[cpu_id] = current_time;
 
         // Update the access token data
@@ -91,6 +95,8 @@ void revoke_memory_access()
     // If owner of the access token then...
     if (memory_token.owner == cpu_id)
     {
+        // INFO("Core %d revoked access", cpu_id);
+
         // Add the time to the current fetching time and compute next possible fetch (3 * time needed)
         uint64_t current_time = generic_timer_read_counter();
         uint64_t time_taken = prefetch_time[cpu_id] + (current_time - start_prefetch[cpu_id]);
@@ -119,8 +125,9 @@ void revoke_memory_access()
             ipi_data_t ipi_data = {{0, IPI_IRQ_RESUME}};
             send_ipi(memory_token.owner, FPSCHED_EVENT, ipi_data);
 
+            // INFO("Core %d resume", memory_token.owner);
+
             // Unfreeze the "fetch timer" for the new fetcher. That means reset the start time
-            current_time = generic_timer_read_counter();
             start_prefetch[memory_token.owner] = current_time;
         }
     }
