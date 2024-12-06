@@ -11,6 +11,7 @@
 #include <ipi.h>
 #include <generic_timer.h>
 
+volatile unsigned long low_prio_counter = 0;
 long int hypercall(unsigned long id)
 {
     long int ret = -HC_E_INVAL_ID;
@@ -58,6 +59,8 @@ long int hypercall(unsigned long id)
         // Of the form: [core number]:[arg0],[arg1],[arg2]
         // No need to lock, there is already a spinlock
         INFO("%d:%llu,%llu,%llu", cpu()->id, arg0, arg1, arg2);
+        INFO("Updates requested: %d", low_prio_counter);
+        low_prio_counter = 0;
         break;
     case HC_MEASURE_IPI:
         data.data = 0;
@@ -76,6 +79,7 @@ long int hypercall(unsigned long id)
     case HC_UPDATE_MEM_ACCESS:
         // Update memory access
         ret = update_memory_access(arg0);
+        low_prio_counter += 1;
         break;
     default:
         WARNING("Unknown hypercall id %d", id);

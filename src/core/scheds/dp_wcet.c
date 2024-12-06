@@ -16,6 +16,8 @@ static volatile uint64_t start_prefetch[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1
 static volatile uint64_t next_prefetch[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1] = 0};
 static volatile uint64_t prefetch_time[PLAT_CPU_NUM] = {[0 ... PLAT_CPU_NUM - 1] = 0};
 
+extern volatile uint64_t low_prio_counter;
+
 // Highest priority => closer number to 0 (0 being the highest)
 uint64_t request_memory_access(uint64_t priority, uint64_t wcet)
 {
@@ -37,7 +39,7 @@ uint64_t request_memory_access(uint64_t priority, uint64_t wcet)
         // Adding the number of CPU to the priorty (lower it)
         current_priority += PLAT_CPU_NUM;
 
-        // INFO("Core %d put low priority", cpu_id);
+        low_prio_counter += 1;
     }
 
     // INFO("Core %d asked priority %d (WCET: %llu)", cpu_id, current_priority, wcet);
